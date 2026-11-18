@@ -6,7 +6,14 @@ CREATE TABLE IF NOT EXISTS products (
   description VARCHAR(255) NOT NULL,
   price_paise INT UNSIGNED NOT NULL,
   image VARCHAR(120) NOT NULL,
+  stock INT UNSIGNED NULL DEFAULT NULL,
   active BOOLEAN NOT NULL DEFAULT TRUE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS product_barcodes (
+  barcode VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+  product_id INT UNSIGNED NOT NULL,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS sales (
@@ -48,3 +55,11 @@ INSERT IGNORE INTO products (id,code,name,category,description,price_paise,image
   (4,'DS104','Berry Laban','Chilled','Chilled milk pudding and raspberry',17900,'/dish-3.webp'),
   (5,'DS105','Pistachio Baklava','Pastries','Buttery filo, pistachios and syrup',19900,'/dish-4.webp'),
   (6,'DS106','Arabic Coffee','Drinks','Cardamom coffee served with dates',11900,'/dish-5.webp');
+CREATE TABLE IF NOT EXISTS whatsapp_feedback (
+  message_id VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+  sender VARCHAR(32) NOT NULL,
+  message TEXT CHARACTER SET utf8mb4 NOT NULL,
+  reply_to VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NULL,
+  received_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX feedback_inbox (received_at, message_id)
+) ENGINE=InnoDB;

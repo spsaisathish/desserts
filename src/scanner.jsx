@@ -26,7 +26,27 @@ async function createDetector() {
   } };
 }
 
-export function Scanner({ scan, products }) {
+export function Scanner({ scan, products, linkBarcode }) {
+  const [linkMessage, setLinkMessage] = useState('');
+  const [linking, setLinking] = useState(false);
+
+  async function saveBarcode(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const fields = new FormData(form);
+    const productId = Number(fields.get('product'));
+    setLinking(true);
+    setLinkMessage('');
+    try {
+      await linkBarcode(fields.get('barcode'), productId);
+      form.elements.barcode.value = '';
+      setLinkMessage(`Barcode linked to ${products.find(product => product.id === productId).name}.`);
+    } catch (error) {
+      setLinkMessage(error.message);
+    } finally {
+      setLinking(false);
+    }
+  }
   const [code, setCode] = useState('');
   const [message, setMessage] = useState('');
   const [camera, setCamera] = useState(false);
@@ -105,10 +125,21 @@ export function Scanner({ scan, products }) {
       setCode('');
       input.current.focus();
     }}>
-      <input autoFocus ref={input} aria-label="Product code" placeholder="Type or scan a product code" autoComplete="off" value={code} onChange={event => setCode(event.target.value)} />
+      <input autoFocus ref={input} aria-label="Barcode or product code" placeholder="Scan or type a barcode or product code" autoComplete="off" value={code} onChange={event => setCode(event.target.value)} />
       <button className="scan">Add item</button>
     </form>
     <p className="scan-message" role="status">{message}</p>
+    <details className="samples"><summary>Link a barcode to a product</summary>
+      <form onSubmit={saveBarcode}>
+        <label className="field">Product<select name="product" required defaultValue="" disabled={linking}>
+          <option value="" disabled>Select a product</option>
+          {products.map(product => <option value={product.id} key={product.id}>{product.name}</option>)}
+        </select></label>
+        <label className="field">Barcode<input name="barcode" required maxLength={64} autoComplete="off" disabled={linking} /></label>
+        <button className="scan" disabled={linking}>{linking ? 'Saving…' : 'Save barcode'}</button>
+        <p className="scan-message" role="status">{linkMessage}</p>
+      </form>
+    </details>
     <details className="samples"><summary>Sample product QR codes</summary>
       <div className="sample-grid">{products.filter(product => /^DS10[1-6]$/.test(product.code)).map(product =>
         <button className="sample" type="button" key={product.id} onClick={() => { setCode(product.code); input.current.focus(); }}>

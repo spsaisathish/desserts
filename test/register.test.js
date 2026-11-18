@@ -16,7 +16,7 @@ test('customer number is queued only when consent is recorded', () => {
   assert.throws(() => parseSale({ ...request, review: true, phone: number }, false), /WhatsApp requires/);
 });
 
-function saleDatabase({ duplicate, hash, price = 24900 } = {}) {
+function saleDatabase({ duplicate, hash, price = 24900, stock = 3 } = {}) {
   const calls = [];
   const pool = {
     getConnection: async () => ({
@@ -31,7 +31,8 @@ function saleDatabase({ duplicate, hash, price = 24900 } = {}) {
           return [{ insertId: 17 }];
         }
         if (sql.startsWith('SELECT id,request_hash')) return [[{ id: 17, hash }]];
-        if (sql.startsWith('SELECT id,name')) return [[{ id: 1, name: 'Classic Kunafa', price_paise: price }]];
+        if (sql.startsWith('SELECT id,name')) return [[{ id: 1, name: 'Classic Kunafa', price_paise: price, stock }]];
+        if (sql.startsWith('UPDATE products')) calls.push(['stock', params]);
         if (sql.startsWith('INSERT INTO sale_items')) calls.push(['items', params[0]]);
         if (sql.startsWith('UPDATE sales')) calls.push(['total', params[0]]);
         if (sql.startsWith('INSERT INTO review_jobs')) calls.push(['review', params[1]]);
@@ -49,7 +50,19 @@ test('server prices and opted-in review commit together', async () => {
   const { calls, pool } = saleDatabase();
   const receipt = await recordSale(pool, parseSale({ ...request, review: true, phone: number }, true));
   assert.equal(receipt.total, 49800);
-  assert.deepEqual(calls, ['begin', 'insert', ['items', [[17, 1, 'Classic Kunafa', 2, 24900]]], ['total', 49800], ['review', '+919000012345'], 'commit', 'release']);
+  assert.deepEqual(calls, ['begin', 'insert', ['stock', [2, 1]], ['items', [[17, 1, 'Classic Kunafa', 2, 24900]]], ['total', 49800], ['review', '+919000012345'], 'commit', 'release']);
+});
+
+test('insufficient stock rolls back before saving items or deducting stock', async () => {
+  const { calls, pool } = saleDatabase({ stock: 1 });
+  await assert.rejects(recordSale(pool, parseSale(request, false)), { status: 422 });
+  assert.deepEqual(calls, ['begin', 'insert', 'rollback', 'release']);
+});
+
+test('untracked products sell without deducting stock', async () => {
+  const { calls, pool } = saleDatabase({ stock: null });
+  await recordSale(pool, parseSale(request, false));
+  assert.equal(calls.some(call => call[0] === 'stock'), false);
 });
 
 test('a changed price rolls back instead of committing the sale or review', async () => {

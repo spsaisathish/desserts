@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Scanner } from './scanner.jsx';
+import { ProductManager, stockLabel } from './products.jsx';
+import { FeedbackInbox } from './feedback.jsx';
 import './app.css';
 
 const cash = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
 const money = paise => cash.format(paise / 100);
 const pendingKey = 'desserts-pos-pending-sale';
-const paymentMethods = ['Cash', 'Card', 'UPI'];
+const paymentMethods = ['Cash', 'UPI'];
 const reviewLabels = {
   off: 'No WhatsApp review requested',
   queued: 'WhatsApp review request queued',
@@ -110,20 +112,31 @@ function App() {
   }, [receiptId, reviewStatus]);
 
   function change(id, delta) {
+    const limit = Math.min(99, products.find(product => product.id === id)?.stock ?? 99);
     setCart(previous => {
       const next = { ...previous };
-      const qty = Math.min(99, (next[id] || 0) + delta);
+      const current = next[id] || 0;
+      const qty = delta > 0 ? Math.max(current, Math.min(limit, current + delta)) : current + delta;
       if (qty > 0) next[id] = qty;
       else delete next[id];
       return next;
     });
   }
+  function atLimit(item) {
+    return (cart[item.id] ?? 0) >= Math.min(99, item.stock ?? 99);
+  }
   function scan(value) {
-    const item = products.find(product => product.code.toUpperCase() === value.trim().toUpperCase());
-    if (!item || (cart[item.id] ?? 0) >= 99) return null;
+    const code = value.trim().toUpperCase();
+    const item = products.find(product => product.id === register.barcodes?.[code]) ??
+      products.find(product => product.code.toUpperCase() === code);
+    if (!item || atLimit(item)) return null;
     change(item.id, 1);
     setMessage(`${item.name} added`);
     return item;
+  }
+  async function linkBarcode(barcode, productId) {
+    const linked = await api('/api/product-barcodes', { barcode, productId });
+    setRegister(previous => ({ ...previous, barcodes: { ...previous.barcodes, [linked.barcode]: linked.productId } }));
   }
   function close() {
     if (!busy && !(pending && modal === 'payment')) setModal(null);
@@ -146,6 +159,7 @@ function App() {
       savePending(null);
       setPending(null);
       setCart({});
+      void loadRegister();
       setReview(false);
       setPhone('');
       setReceipt(result);
@@ -155,6 +169,7 @@ function App() {
       if ([400, 422].includes(error.status)) {
         savePending(null);
         setPending(null);
+        void loadRegister();
         if (!items.length) setModal(null);
       }
       setSaleError(error.message);
@@ -178,7 +193,11 @@ function App() {
 
   return <>
     <header><div className="header-group"><img className="brand" src="/logo.webp" alt="Dessert · Simply Sweet" /><span className="header-label">Point of sale</span></div>
-      <div className="header-right"><button className="history" onClick={() => { setSaleError(''); setModal('lookup'); }}>Find receipt</button></div>
+      <div className="header-right">
+        <button className="history" disabled={Boolean(pending)} onClick={() => setModal('products')}>Products</button>
+        <button className="history" disabled={Boolean(pending)} onClick={() => setModal('feedback')}>Feedback</button>
+        <button className="history" onClick={() => { setSaleError(''); setModal('lookup'); }}>Find receipt</button>
+      </div>
     </header>
     {!register ? <section className="initial"><h2>Register</h2><p role="status">{loadError || 'Loading menu…'}</p>
       {loadError && <button className="scan" onClick={loadRegister}>Retry</button>}</section> :
@@ -193,7 +212,8 @@ function App() {
         <div className="grid">{products.filter(item => (category === 'All items' || category === item.category) &&
           `${item.name} ${item.code}`.toLowerCase().includes(query.trim().toLowerCase())).map(item =>
           <article className="item" key={item.id}><img src={item.image} alt="" /><div className="item-body"><h3>{item.name}</h3><p>{item.description}</p>
-            <div className="item-bottom"><span className="price">{money(item.price)}</span><button className="add" disabled={Boolean(pending) || cart[item.id] >= 99} aria-label={`Add ${item.name}`}
+            <small className="stock-label">{stockLabel(item.stock)}</small>
+            <div className="item-bottom"><span className="price">{money(item.price)}</span><button className="add" disabled={Boolean(pending) || atLimit(item)} aria-label={`Add ${item.name}`}
               onClick={() => { change(item.id, 1); setMessage(`${item.name} added`); }}>+</button></div>
           </div></article>)}</div>
       </section>
@@ -203,7 +223,7 @@ function App() {
         <div className="lines">{items.length ? items.map(item => <div className="line" key={item.id}><img src={item.image} alt="" />
           <div><strong>{item.name}</strong><small>{money(item.price * item.qty)}</small></div>
           <div className="qty"><button disabled={Boolean(pending)} aria-label={`Remove one ${item.name}`} onClick={() => change(item.id, -1)}>−</button>
-            <span>{item.qty}</span><button disabled={Boolean(pending) || item.qty >= 99} aria-label={`Add one ${item.name}`} onClick={() => change(item.id, 1)}>+</button></div>
+            <span>{item.qty}</span><button disabled={Boolean(pending) || atLimit(item)} aria-label={`Add one ${item.name}`} onClick={() => change(item.id, 1)}>+</button></div>
         </div>) : <p className="empty">Tap a product or scan its code to start.</p>}</div>
         <div className="order-bottom"><div className="split total"><span>Total</span><strong>{money(total)}</strong></div>
           <button className="checkout" disabled={!items.length && !pending} onClick={() => { setSaleError(''); setModal('payment'); }}>{pending ? 'Resume billing' : 'Review payment →'}</button>
@@ -212,7 +232,9 @@ function App() {
         </div>
       </aside>
     </main>}
-    {modal === 'scanner' && <Modal title="Scan product" close={close}><Scanner scan={scan} products={products} /></Modal>}
+    {modal === 'products' && <Modal title="Products" close={close}><ProductManager api={api} refreshRegister={loadRegister} money={money} /></Modal>}
+    {modal === 'feedback' && <Modal title="WhatsApp feedback" close={close}><FeedbackInbox api={api} /></Modal>}
+    {modal === 'scanner' && <Modal title="Scan product" close={close}><Scanner scan={scan} products={products} linkBarcode={linkBarcode} /></Modal>}
     {modal === 'clear' && <Modal title="Clear order?" close={close}><p>Remove all items from this order.</p>
       <button className="checkout" onClick={() => { setCart({}); close(); }}>Clear order</button></Modal>}
     {modal === 'payment' && <Modal title={pending ? 'Resume billing' : 'Review payment'} close={close}>

@@ -6,7 +6,7 @@ export function whatsappConfig(env) {
     template: env.WA_TEMPLATE_NAME,
     language: env.WA_TEMPLATE_LANGUAGE || 'en_US'
   };
-  if (![config.version, config.sender, config.token, config.template].some(Boolean)) return null;
+  if (![config.version, config.token, config.template].some(Boolean)) return null;
   if (!/^v[0-9]+\.[0-9]+$/.test(config.version ?? '') || !/^\d+$/.test(config.sender ?? '') ||
       !config.token || !/^[a-z0-9_]+$/.test(config.template ?? '')) {
     throw new Error('Configure WA_GRAPH_VERSION, WA_PHONE_NUMBER_ID, WA_ACCESS_TOKEN and WA_TEMPLATE_NAME together.');

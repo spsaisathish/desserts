@@ -60,7 +60,7 @@ export async function recordSale(pool, sale) {
       [sale.requestId, sale.hash, sale.orderType, sale.payment]);
     id = inserted.insertId;
     const [products] = await connection.query(
-      'SELECT id,name,price_paise FROM products WHERE active=TRUE AND id IN (?) FOR SHARE',
+      'SELECT id,name,price_paise,stock FROM products WHERE active=TRUE AND id IN (?) ORDER BY id FOR UPDATE',
       [sale.lines.map(line => line.id)]);
     const catalog = new Map(products.map(product => [product.id, product]));
     let total = 0;
@@ -69,10 +69,18 @@ export async function recordSale(pool, sale) {
       if (!product || product.price_paise !== line.price) {
         throw new InputError('The menu changed. Refresh prices and review the order again.');
       }
+      if (product.stock !== null && product.stock < line.qty) {
+        throw new InputError(`Only ${product.stock} available for ${product.name}. Update the order and try again.`, 422);
+      }
       total += product.price_paise * line.qty;
       return [id, product.id, product.name, line.qty, product.price_paise];
     });
     if (total > 4294967295) throw new InputError('Order total is too large.');
+    for (const { id: productId, qty } of sale.lines) {
+      if (catalog.get(productId).stock !== null) {
+        await connection.query('UPDATE products SET stock=stock-? WHERE id=?', [qty, productId]);
+      }
+    }
     await connection.query('INSERT INTO sale_items (sale_id,product_id,product_name,quantity,price_paise) VALUES ?', [items]);
     await connection.query('UPDATE sales SET total_paise=? WHERE id=?', [total, id]);
     if (sale.recipient) {
