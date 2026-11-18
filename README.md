@@ -25,12 +25,18 @@ Open **Products** to list, add or edit products and set the number of units avai
 
 Use **Product image** in the add or edit form to upload a JPEG, PNG, or WebP file up to 5 MB. Uploaded images are stored in `uploads/product-images/`. Include that directory when backing up the product database.
 
+Choose a category from the dropdown when adding or editing a product. Use **Products → Manage categories** to add categories. For an existing database, apply `db/add-product-categories.sql` to populate the dropdown from its existing products.
+
 For an existing database whose `products` table has no `stock` column, apply `db/add-product-stock.sql` once before starting the updated server. For an existing database without barcode mapping, apply `db/schema.sql` first to create the missing table.
 
 1. Open **Scan QR / barcode** and tap **Start camera**. Show each product code to the camera. A match adds one unit. Remove a code from view briefly before scanning that same item again. The drawer includes sample product QR codes. To test the camera, show a sample code on another screen.
 2. A keyboard-mode scanner can fill the code field and submit it automatically when configured with an **Enter** suffix. Cashiers can also tap items or type a product code. Maintain product codes in the MySQL `products` table.
-3. After taking payment at the counter, select the payment method and tap **Record payment & print**. The server calculates and commits the sale before the browser opens the print dialog. Card and UPI are recorded as payment methods after payment is taken separately.
-4. In the print dialog select the thermal printer exposed by the tablet, operating system or vendor print service. Select the printer's roll size and turn off browser headers and footers. The default ticket is sized for an 80 mm roll. Use the **58 mm** checkbox for smaller printers. **Find receipt** lets staff reopen and reprint a completed bill. Direct or silent printing needs the printer model and a matching vendor SDK, kiosk print setup or print service.
+3. Select the payment method. For UPI, set `UPI_MERCHANT_ID` to your business UPI ID in `.env` and restart the server. Customers can scan the QR on screen or on a printed payment bill from Google Pay or their UPI app. Confirm the payment in your merchant account, then tap **Record payment & print** to issue the paid receipt. The POS does not receive payment confirmation from the QR.
+4. In the print dialog select the thermal printer exposed by the tablet, operating system or vendor print service. Select the printer's roll size and turn off browser headers and footers. The default ticket is sized for an 80 mm roll. Use the **58 mm** checkbox for smaller printers. **Orders** lets staff reopen and reprint a completed bill. Direct or silent printing needs the printer model and a matching vendor SDK, kiosk print setup or print service.
+
+Open **Orders** to browse billed orders or find a bill by number. Choose **View**, then **Cancel item** on the product you want to cancel. Select the quantity and reason, then confirm. The bill retains its original lines and shows the cancelled quantities and remaining total. The POS restores quantities recorded as deducted for products still tracking stock, and any customer refund is handled separately. Review stock manually for bills created before stock deductions were recorded on each line.
+
+For existing databases, apply `db/add-order-cancellation.sql` if its columns are missing, then apply `db/add-item-cancellations.sql` before starting the updated server.
 
 ## Connect WhatsApp reviews
 
@@ -51,5 +57,7 @@ For a local demo, set `WA_FEEDBACK_DEMO=true`, restart the app, then open **Feed
 [Meta WhatsApp Business Platform](https://developers.facebook.com/documentation/business-messaging/whatsapp/overview) · [ZXing browser decoder](https://github.com/zxing-js/browser)
 
 ## Verify
+
+Run `npm run lint` for ESLint and `npm run format:check` to check source formatting. Use `npm run format` to apply the formatting.
 
 Run `npm test` for billing and WhatsApp queue logic. With a test database, complete a sale and look it up by receipt number. On the target tablet, scan a sample product, verify the quantity and total, then check the receipt on the intended thermal printer. Use a Meta test recipient to verify message delivery before enabling live review requests.

@@ -6,8 +6,9 @@ async function createDetector() {
   try {
     if ('BarcodeDetector' in window) {
       const supported = await window.BarcodeDetector.getSupportedFormats();
-      const enabled = formats.filter(format => supported.includes(format));
-      if (enabled.length === formats.length) return new window.BarcodeDetector({ formats: enabled });
+      const enabled = formats.filter((format) => supported.includes(format));
+      if (enabled.length === formats.length)
+        return new window.BarcodeDetector({ formats: enabled });
     }
   } catch {
     // The bundled decoder can cover devices where the native API is unavailable.
@@ -15,15 +16,22 @@ async function createDetector() {
   const [{ BrowserMultiFormatReader }, { NotFoundException, ChecksumException, FormatException }] =
     await Promise.all([import('@zxing/browser'), import('@zxing/library')]);
   const reader = new BrowserMultiFormatReader();
-  return { async detect(video) {
-    if (video.readyState < 2) return [];
-    try {
-      return [{ rawValue: reader.decode(video).getText() }];
-    } catch (error) {
-      if ([NotFoundException, ChecksumException, FormatException].some(type => error instanceof type)) return [];
-      throw error;
-    }
-  } };
+  return {
+    async detect(video) {
+      if (video.readyState < 2) return [];
+      try {
+        return [{ rawValue: reader.decode(video).getText() }];
+      } catch (error) {
+        if (
+          [NotFoundException, ChecksumException, FormatException].some(
+            (type) => error instanceof type,
+          )
+        )
+          return [];
+        throw error;
+      }
+    },
+  };
 }
 
 export function Scanner({ scan, products, linkBarcode }) {
@@ -40,7 +48,9 @@ export function Scanner({ scan, products, linkBarcode }) {
     try {
       await linkBarcode(fields.get('barcode'), productId);
       form.elements.barcode.value = '';
-      setLinkMessage(`Barcode linked to ${products.find(product => product.id === productId).name}.`);
+      setLinkMessage(
+        `Barcode linked to ${products.find((product) => product.id === productId).name}.`,
+      );
     } catch (error) {
       setLinkMessage(error.message);
     } finally {
@@ -57,7 +67,11 @@ export function Scanner({ scan, products, linkBarcode }) {
 
   function scanned(value) {
     const product = onScan.current(value);
-    setMessage(product ? `Added ${product.name}` : `Unable to add code ${value}. Check the product code or order quantity.`);
+    setMessage(
+      product
+        ? `Added ${product.name}`
+        : `Unable to add code ${value}. Check the product code or order quantity.`,
+    );
   }
 
   useEffect(() => {
@@ -90,17 +104,28 @@ export function Scanner({ scan, products, linkBarcode }) {
 
     async function start() {
       try {
-        if (!navigator.mediaDevices?.getUserMedia) throw new Error('Open this register over HTTPS to use the camera.');
+        if (!navigator.mediaDevices?.getUserMedia)
+          throw new Error('Open this register over HTTPS to use the camera.');
         const detector = await createDetector();
         if (cancelled) return;
-        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' } } });
-        if (cancelled) { stream.getTracks().forEach(track => track.stop()); return; }
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: { ideal: 'environment' } },
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
         target.srcObject = stream;
         await target.play();
         if (!cancelled) read(detector);
       } catch (error) {
         if (!cancelled) {
-          setMessage(error.name === 'NotAllowedError' ? 'Allow camera access in the browser, or enter a code.' : error.message);
+          setMessage(
+            error.name === 'NotAllowedError'
+              ? 'Allow camera access in the browser, or enter a code.'
+              : error.message,
+          );
           setCamera(false);
         }
       }
@@ -110,41 +135,101 @@ export function Scanner({ scan, products, linkBarcode }) {
     return () => {
       cancelled = true;
       clearTimeout(timer);
-      stream?.getTracks().forEach(track => track.stop());
+      stream?.getTracks().forEach((track) => track.stop());
       target.srcObject = null;
     };
   }, [camera]);
 
-  return <>
-    <p className="help">Show a QR code or barcode to the camera. It adds the product automatically. Move the code away before scanning the same item again.</p>
-    <button type="button" className="scan" onClick={() => { setMessage(''); setCamera(!camera); }}>{camera ? 'Stop camera' : 'Start camera'}</button>
-    <video className="viewfinder" ref={video} hidden={!camera} playsInline muted />
-    <form className="scan-form" onSubmit={event => {
-      event.preventDefault();
-      if (code.trim()) scanned(code.trim());
-      setCode('');
-      input.current.focus();
-    }}>
-      <input autoFocus ref={input} aria-label="Barcode or product code" placeholder="Scan or type a barcode or product code" autoComplete="off" value={code} onChange={event => setCode(event.target.value)} />
-      <button className="scan">Add item</button>
-    </form>
-    <p className="scan-message" role="status">{message}</p>
-    <details className="samples"><summary>Link a barcode to a product</summary>
-      <form onSubmit={saveBarcode}>
-        <label className="field">Product<select name="product" required defaultValue="" disabled={linking}>
-          <option value="" disabled>Select a product</option>
-          {products.map(product => <option value={product.id} key={product.id}>{product.name}</option>)}
-        </select></label>
-        <label className="field">Barcode<input name="barcode" required maxLength={64} autoComplete="off" disabled={linking} /></label>
-        <button className="scan" disabled={linking}>{linking ? 'Saving…' : 'Save barcode'}</button>
-        <p className="scan-message" role="status">{linkMessage}</p>
+  return (
+    <>
+      <p className="help">
+        Show a QR code or barcode to the camera. It adds the product automatically. Move the code
+        away before scanning the same item again.
+      </p>
+      <button
+        type="button"
+        className="scan"
+        onClick={() => {
+          setMessage('');
+          setCamera(!camera);
+        }}
+      >
+        {camera ? 'Stop camera' : 'Start camera'}
+      </button>
+      <video className="viewfinder" ref={video} hidden={!camera} playsInline muted />
+      <form
+        className="scan-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (code.trim()) scanned(code.trim());
+          setCode('');
+          input.current.focus();
+        }}
+      >
+        <input
+          autoFocus
+          ref={input}
+          aria-label="Barcode or product code"
+          placeholder="Scan or type a barcode or product code"
+          autoComplete="off"
+          value={code}
+          onChange={(event) => setCode(event.target.value)}
+        />
+        <button className="scan">Add item</button>
       </form>
-    </details>
-    <details className="samples"><summary>Sample product QR codes</summary>
-      <div className="sample-grid">{products.filter(product => /^DS10[1-6]$/.test(product.code)).map(product =>
-        <button className="sample" type="button" key={product.id} onClick={() => { setCode(product.code); input.current.focus(); }}>
-          <img alt="" src={`/qr-${Number(product.code.slice(-1)) - 1}.png`} /><span>{product.name}</span><b>{product.code}</b>
-        </button>)}</div>
-    </details>
-  </>;
+      <p className="scan-message" role="status">
+        {message}
+      </p>
+      <details className="samples">
+        <summary>Link a barcode to a product</summary>
+        <form onSubmit={saveBarcode}>
+          <label className="field">
+            Product
+            <select name="product" required defaultValue="" disabled={linking}>
+              <option value="" disabled>
+                Select a product
+              </option>
+              {products.map((product) => (
+                <option value={product.id} key={product.id}>
+                  {product.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Barcode
+            <input name="barcode" required maxLength={64} autoComplete="off" disabled={linking} />
+          </label>
+          <button className="scan" disabled={linking}>
+            {linking ? 'Saving…' : 'Save barcode'}
+          </button>
+          <p className="scan-message" role="status">
+            {linkMessage}
+          </p>
+        </form>
+      </details>
+      <details className="samples">
+        <summary>Sample product QR codes</summary>
+        <div className="sample-grid">
+          {products
+            .filter((product) => /^DS10[1-6]$/.test(product.code))
+            .map((product) => (
+              <button
+                className="sample"
+                type="button"
+                key={product.id}
+                onClick={() => {
+                  setCode(product.code);
+                  input.current.focus();
+                }}
+              >
+                <img alt="" src={`/qr-${Number(product.code.slice(-1)) - 1}.png`} />
+                <span>{product.name}</span>
+                <b>{product.code}</b>
+              </button>
+            ))}
+        </div>
+      </details>
+    </>
+  );
 }

@@ -16,7 +16,8 @@ export async function storeProductImage(data) {
   let extension;
   if (bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))) extension = 'png';
   else if (bytes.subarray(0, 3).equals(Buffer.from('ffd8ff', 'hex'))) extension = 'jpg';
-  else if (bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP') extension = 'webp';
+  else if (bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP')
+    extension = 'webp';
   if (!extension) throw new InputError('Choose a JPEG, PNG, or WebP image.');
 
   await mkdir(imageDirectory, { recursive: true });

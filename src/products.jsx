@@ -17,6 +17,7 @@ export function stockLabel(stock) {
 
 export function ProductManager({ api, refreshRegister, money }) {
   const [products, setProducts] = useState(null);
+  const [categories, setCategories] = useState([]);
   const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -25,12 +26,35 @@ export function ProductManager({ api, refreshRegister, money }) {
   async function load() {
     setError('');
     try {
-      setProducts((await api('/api/products')).products);
+      const catalog = await api('/api/products');
+      setProducts(catalog.products);
+      setCategories(catalog.categories);
     } catch (failure) {
       setError(failure.message);
     }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function addCategory(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const name = new FormData(form).get('name');
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      await api('/api/categories', { name });
+      form.reset();
+      setMessage('Category added.');
+      await load();
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function save(event) {
     event.preventDefault();
@@ -46,7 +70,7 @@ export function ProductManager({ api, refreshRegister, money }) {
         previousStock: editing.stock,
         price: Math.round(Number(values.price) * 100),
         stock: values.stock === '' ? null : Number(values.stock),
-        active: values.active === 'on'
+        active: values.active === 'on',
       });
       setEditing(null);
       setMessage(editing.id ? 'Product updated.' : 'Product added.');
@@ -58,39 +82,165 @@ export function ProductManager({ api, refreshRegister, money }) {
     }
   }
 
-  return <>
-    {error && <p className="warning" role="alert">{error}</p>}
-    {editing ? <form onSubmit={save}>
-      <h3>{editing.id ? 'Edit product' : 'Add product'}</h3>
-      <fieldset className="product-fields" disabled={busy}>
-        <label className="field">Name<input name="name" required maxLength={120} defaultValue={editing.name} /></label>
-        <label className="field">Product code<input name="code" required maxLength={64} defaultValue={editing.code} /></label>
-        <label className="field">Category<input name="category" required maxLength={40} defaultValue={editing.category} /></label>
-        <label className="field">Price (₹)<input name="price" type="number" min="0" max="42949672.95" step="0.01" required defaultValue={editing.price == null ? '' : editing.price / 100} /></label>
-        <label className="field">Units in stock<input name="stock" type="number" min="0" max="4294967295" step="1" placeholder="Leave blank to skip tracking" defaultValue={editing.id ? editing.stock ?? '' : 0} /></label>
-        <label className="field product-description">Product image
-          {editing.image && <img className="product-image-preview" src={editing.image} alt="Current product image" />}
-          <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" />
-          <small>JPEG, PNG, or WebP up to 5 MB</small>
-        </label>
-        <label className="field product-description">Description<input name="description" maxLength={255} defaultValue={editing.description} /></label>
-        <label className="check"><input name="active" type="checkbox" defaultChecked={editing.active ?? true} /> Show on register</label>
-      </fieldset>
-      <div className="actions">
-        <button type="button" className="method" disabled={busy} onClick={() => { setEditing(null); load(); }}>Back to list</button>
-        <button className="checkout" disabled={busy}>{busy ? 'Saving…' : 'Save product'}</button>
-      </div>
-    </form> : <>
-      <button className="scan" disabled={busy} onClick={() => { setError(''); setMessage(''); setEditing({}); }}>Add product</button>
-      {message && <p role="status">{message}</p>}
-      {!products && (error ? <button className="method" onClick={load}>Retry</button> : <p role="status">Loading products…</p>)}
-      {products?.length === 0 && <p>No products yet.</p>}
-      <ul className="product-list">{products?.map(product => <li className="split" key={product.id}>
-        <div><strong>{product.name}</strong><br />
-          <small>{product.code} · {money(product.price)} · {stockLabel(product.stock)}{!product.active && ' · Hidden'}</small>
-        </div>
-        <button className="method" disabled={busy} aria-label={`Edit ${product.name}`} onClick={() => { setError(''); setMessage(''); setEditing(product); }}>Edit</button>
-      </li>)}</ul>
-    </>}
-  </>;
+  return (
+    <>
+      {error && (
+        <p className="warning" role="alert">
+          {error}
+        </p>
+      )}
+      {editing ? (
+        <form onSubmit={save}>
+          <h3>{editing.id ? 'Edit product' : 'Add product'}</h3>
+          <fieldset className="product-fields" disabled={busy}>
+            <label className="field">
+              Name
+              <input name="name" required maxLength={120} defaultValue={editing.name} />
+            </label>
+            <label className="field">
+              Product code
+              <input name="code" required maxLength={64} defaultValue={editing.code} />
+            </label>
+            <label className="field">
+              Category
+              <select name="category" required defaultValue={editing.category ?? ''}>
+                <option value="" disabled>
+                  Select a category
+                </option>
+                {editing.category && !categories.includes(editing.category) && (
+                  <option>{editing.category}</option>
+                )}
+                {categories.map((category) => (
+                  <option key={category}>{category}</option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              Price (₹)
+              <input
+                name="price"
+                type="number"
+                min="0"
+                max="42949672.95"
+                step="0.01"
+                required
+                defaultValue={editing.price == null ? '' : editing.price / 100}
+              />
+            </label>
+            <label className="field">
+              Units in stock
+              <input
+                name="stock"
+                type="number"
+                min="0"
+                max="4294967295"
+                step="1"
+                placeholder="Leave blank to skip tracking"
+                defaultValue={editing.id ? (editing.stock ?? '') : 0}
+              />
+            </label>
+            <label className="field product-description">
+              Product image
+              {editing.image && (
+                <img
+                  className="product-image-preview"
+                  src={editing.image}
+                  alt="Current product image"
+                />
+              )}
+              <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" />
+              <small>JPEG, PNG, or WebP up to 5 MB</small>
+            </label>
+            <label className="field product-description">
+              Description
+              <input name="description" maxLength={255} defaultValue={editing.description} />
+            </label>
+            <label className="check">
+              <input name="active" type="checkbox" defaultChecked={editing.active ?? true} /> Show
+              on register
+            </label>
+          </fieldset>
+          <div className="actions">
+            <button
+              type="button"
+              className="method"
+              disabled={busy}
+              onClick={() => {
+                setEditing(null);
+                load();
+              }}
+            >
+              Back to list
+            </button>
+            <button className="checkout" disabled={busy}>
+              {busy ? 'Saving…' : 'Save product'}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <button
+            className="scan"
+            disabled={busy || !categories.length}
+            onClick={() => {
+              setError('');
+              setMessage('');
+              setEditing({});
+            }}
+          >
+            Add product
+          </button>
+          {message && <p role="status">{message}</p>}
+          <details className="samples category-manager">
+            <summary>Manage categories</summary>
+            {categories.length > 0 && <p>{categories.join(' · ')}</p>}
+            <form onSubmit={addCategory}>
+              <label className="field">
+                New category
+                <input name="name" required maxLength={40} disabled={busy} />
+              </label>
+              <button className="scan" disabled={busy}>
+                Add category
+              </button>
+            </form>
+          </details>
+          {!products &&
+            (error ? (
+              <button className="method" onClick={load}>
+                Retry
+              </button>
+            ) : (
+              <p role="status">Loading products…</p>
+            ))}
+          {products?.length === 0 && <p>No products yet.</p>}
+          <ul className="product-list">
+            {products?.map((product) => (
+              <li className="split" key={product.id}>
+                <div>
+                  <strong>{product.name}</strong>
+                  <br />
+                  <small>
+                    {product.code} · {money(product.price)} · {stockLabel(product.stock)}
+                    {!product.active && ' · Hidden'}
+                  </small>
+                </div>
+                <button
+                  className="method"
+                  disabled={busy}
+                  aria-label={`Edit ${product.name}`}
+                  onClick={() => {
+                    setError('');
+                    setMessage('');
+                    setEditing(product);
+                  }}
+                >
+                  Edit
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
+  );
 }

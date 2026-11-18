@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS sales (
   order_type ENUM('Dine-in','Takeaway') NOT NULL,
   payment ENUM('Cash','Card','UPI') NOT NULL,
   total_paise INT UNSIGNED NOT NULL,
+  canceled_at TIMESTAMP(3) NULL DEFAULT NULL,
+  cancel_reason VARCHAR(255) NULL,
   created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB;
 
@@ -31,6 +33,7 @@ CREATE TABLE IF NOT EXISTS sale_items (
   product_id INT UNSIGNED NOT NULL,
   product_name VARCHAR(120) NOT NULL,
   quantity SMALLINT UNSIGNED NOT NULL,
+  stock_deducted BOOLEAN NOT NULL DEFAULT FALSE,
   price_paise INT UNSIGNED NOT NULL,
   PRIMARY KEY (sale_id, product_id),
   FOREIGN KEY (sale_id) REFERENCES sales(id),
@@ -62,4 +65,20 @@ CREATE TABLE IF NOT EXISTS whatsapp_feedback (
   reply_to VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NULL,
   received_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   INDEX feedback_inbox (received_at, message_id)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS product_categories (
+  name VARCHAR(40) PRIMARY KEY
+) ENGINE=InnoDB;
+
+INSERT IGNORE INTO product_categories (name)
+SELECT DISTINCT category FROM products;
+CREATE TABLE IF NOT EXISTS sale_item_cancellations (
+  sale_id BIGINT UNSIGNED NOT NULL,
+  product_id INT UNSIGNED NOT NULL,
+  request_id CHAR(36) NOT NULL,
+  quantity SMALLINT UNSIGNED NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (sale_id, request_id),
+  FOREIGN KEY (sale_id, product_id) REFERENCES sale_items(sale_id, product_id)
 ) ENGINE=InnoDB;
