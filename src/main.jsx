@@ -6,6 +6,7 @@ import { FeedbackInbox } from './feedback.jsx';
 import { OrderList } from './orders.jsx';
 import { PaymentQr, paymentQr, Ticket } from './receipt.jsx';
 import { SessionGate } from './login.jsx';
+import { animateCartAdd, animateCartRemove, reduceMotion } from './cart-motion.js';
 import './app.css';
 
 const cash = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
@@ -82,6 +83,8 @@ function Modal({ title, close, children }) {
 }
 
 function App({ role, onSignOut }) {
+  const cartShortcut = useRef(null);
+  const cartHeading = useRef(null);
   const [register, setRegister] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [cart, setCart] = useState({});
@@ -109,6 +112,7 @@ function App({ role, onSignOut }) {
     .filter((product) => cart[product.id])
     .map((product) => ({ ...product, qty: cart[product.id] }));
   const total = items.reduce((sum, item) => sum + item.qty * item.price, 0);
+  const cartQuantity = items.reduce((sum, item) => sum + item.qty, 0);
   const upiMerchant = register?.upiMerchant;
   const paymentReference =
     modal === 'payment' && payment === 'UPI' && !pending ? paymentDraft?.id : null;
@@ -172,6 +176,21 @@ function App({ role, onSignOut }) {
   }
   function atLimit(item) {
     return (cart[item.id] ?? 0) >= Math.min(99, item.stock ?? 99);
+  }
+  function addFromCard(item, photo) {
+    if (pending || atLimit(item)) return;
+    change(item.id, 1);
+    setMessage(`${item.name} added`);
+    const shortcut = cartShortcut.current;
+    animateCartAdd(photo, shortcut?.offsetWidth ? shortcut : cartHeading.current);
+  }
+
+  function viewCart() {
+    cartHeading.current?.focus({ preventScroll: true });
+    cartHeading.current?.scrollIntoView({
+      behavior: reduceMotion() ? 'instant' : 'smooth',
+      block: 'start',
+    });
   }
   function scan(value) {
     const code = value.trim().toUpperCase();
@@ -393,10 +412,7 @@ function App({ role, onSignOut }) {
                     key={item.id}
                     disabled={Boolean(pending) || atLimit(item)}
                     aria-label={`Add ${item.name}, ${money(item.price)}, ${stockLabel(item.stock)}`}
-                    onClick={() => {
-                      change(item.id, 1);
-                      setMessage(`${item.name} added`);
-                    }}
+                    onClick={(event) => addFromCard(item, event.currentTarget.querySelector('img'))}
                   >
                     <img src={item.image} alt="" />
                     <span className="item-body">
@@ -411,7 +427,9 @@ function App({ role, onSignOut }) {
           </section>
           <aside className="order" aria-labelledby="order-title">
             <div className="order-top">
-              <h2 id="order-title">Current order</h2>
+              <h2 id="order-title" ref={cartHeading} tabIndex={-1}>
+                Current order
+              </h2>
               <div className="modes">
                 {['Dine-in', 'Takeaway'].map((label) => (
                   <button
@@ -438,7 +456,11 @@ function App({ role, onSignOut }) {
                       <button
                         disabled={Boolean(pending)}
                         aria-label={`Remove one ${item.name}`}
-                        onClick={() => change(item.id, -1)}
+                        onClick={(event) => {
+                          animateCartRemove(event.currentTarget.closest('.line'), item.qty === 1);
+                          change(item.id, -1);
+                          setMessage(`Removed one ${item.name}`);
+                        }}
                       >
                         −
                       </button>
@@ -750,6 +772,18 @@ function App({ role, onSignOut }) {
             </div>
           )}
         </Modal>
+      )}
+      {register && (
+        <button
+          type="button"
+          className="mobile-cart"
+          ref={cartShortcut}
+          onClick={viewCart}
+          aria-label={`View cart, ${cartQuantity} ${cartQuantity === 1 ? 'item' : 'items'}`}
+          aria-controls="order-title"
+        >
+          View cart <span aria-hidden="true">{cartQuantity}</span>
+        </button>
       )}
       <div className="status" role="status" onAnimationEnd={() => setMessage('')} key={message}>
         {message}
