@@ -25,16 +25,18 @@ function LoginPage({ api, onSuccess }) {
   return (
     <main className="login-page">
       <div className="login-hero">
-        <img className="login-logo" src="/logo.webp" alt="Dessert · Simply Sweet" />
+        <div className="login-brand">
+          <img className="login-logo" src="/logo.webp" alt="Dessert · Simply Sweet" />
+        </div>
+        <div className="login-photo" aria-hidden="true" />
       </div>
       <section className="login-panel" aria-labelledby="login-title">
         <div className="login-content">
           <span className="login-label">Point of sale</span>
           <h1 id="login-title">{role === 'owner' ? 'Owner sign-in' : 'Cashier sign-in'}</h1>
-          <div className="methods" role="group" aria-label="Account type">
+          <div className="login-roles" role="group" aria-label="Account type">
             {['cashier', 'owner'].map((account) => (
               <button
-                className="method"
                 type="button"
                 key={account}
                 disabled={busy}
