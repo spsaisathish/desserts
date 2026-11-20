@@ -1,0 +1,128 @@
+.login-page {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+.login-hero {
+  display: grid;
+  place-items: center;
+  min-height: 245px;
+  padding: 28px;
+  border-right: 1px solid var(--gold);
+  background:
+    linear-gradient(155deg, #0c241aba, #0c241a60 55%, #10271ee8),
+    url('/shop.webp') center 45% / cover,
+    var(--green);
+}
+
+.login-logo {
+  display: block;
+  width: min(85%, 325px);
+  max-height: 190px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 22px #07160d);
+  mix-blend-mode: lighten;
+}
+
+.login-panel {
+  display: grid;
+  place-items: center;
+  padding: clamp(28px, 6vw, 88px);
+  background: var(--paper);
+}
+
+.login-content {
+  width: min(100%, 380px);
+}
+
+.login-label {
+  color: #715623;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.login-content h1 {
+  margin: 12px 0 8px;
+  font: 600 clamp(2rem, 4.1vw, 3.25rem) / 1.08 var(--serif);
+}
+
+.login-content > p {
+  margin: 0 0 28px;
+  color: #606a5b;
+}
+
+.login-field {
+  display: block;
+  margin: 16px 0 7px;
+  font-weight: 700;
+}
+
+.login-content input {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid #c9bea7;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: #fff;
+  font-size: 16px;
+}
+
+.login-password {
+  position: relative;
+}
+
+.login-password input {
+  padding-right: 72px;
+}
+
+.login-password button {
+  position: absolute;
+  right: 5px;
+  top: 3px;
+  min-width: 58px;
+  border: 0;
+  border-radius: 6px;
+  color: #5f4c28;
+  background: transparent;
+  font-weight: 700;
+}
+
+.login-submit {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 24px;
+  border: 1px solid #895e28;
+  border-radius: 8px;
+  color: #fff8e8;
+  background: var(--green);
+  font-weight: 700;
+}
+
+.login-submit:hover:enabled {
+  background: #1c3d2d;
+}
+
+@media (max-width: 660px) {
+  .login-page {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .login-hero {
+    min-height: clamp(155px, 34svh, 240px);
+    border-right: 0;
+    border-bottom: 1px solid var(--gold);
+  }
+  .login-logo {
+    width: min(64%, 210px);
+    max-height: 120px;
+  }
+  .login-panel {
+    place-items: start center;
+    padding: 30px 24px 44px;
+  }
+}

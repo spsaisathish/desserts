@@ -822,12 +822,19 @@ dialog {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-@media (max-width: 460px) {
+@media (max-width: 575px) {
   header {
+    height: auto;
+    min-height: 64px;
     flex-wrap: wrap;
+    gap: 4px;
+    padding-bottom: 8px;
   }
   .header-right {
     flex-wrap: wrap;
+  }
+  .header-right .history {
+    padding-inline: 9px;
   }
 }
 .field select {

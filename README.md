@@ -17,7 +17,9 @@ npm start
 
 Open **http://127.0.0.1:4173** and sign in with the cashier credentials from `.env`. If you already run MySQL, create a database and account, apply `db/schema.sql` to that database, and set the connection values in `.env`. Leave the WhatsApp fields empty until the sender is ready.
 
-For a tablet, serve the Node app through an HTTPS reverse proxy with a certificate trusted by the tablet. Open that HTTPS address on the tablet. Keep the register behind staff authentication, keep MySQL on a private connection, and use HTTPS for any access beyond localhost.
+Set `POS_OWNER_USER` and `POS_OWNER_PASSWORD` in `.env` to enable **Owner** sign-in. Use credentials distinct from the cashier account. Billed item cancellation requires an owner session.
+
+For a tablet, serve the Node app through an HTTPS reverse proxy with a certificate trusted by the tablet. Set `POS_SECURE_COOKIE=true` when the proxy terminates HTTPS. Keep MySQL on a private connection and use HTTPS for access beyond localhost. Cashier sessions expire after eight hours or when the server restarts.
 
 ## Counter workflow
 

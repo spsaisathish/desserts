@@ -5,6 +5,7 @@ import { ProductManager, stockLabel } from './products.jsx';
 import { FeedbackInbox } from './feedback.jsx';
 import { OrderList } from './orders.jsx';
 import { PaymentQr, paymentQr, Ticket } from './receipt.jsx';
+import { SessionGate } from './login.jsx';
 import './app.css';
 
 const cash = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
@@ -33,6 +34,9 @@ async function api(path, payload) {
     signal: AbortSignal.timeout(20000),
   });
   const data = await response.json().catch(() => ({}));
+  if (response.status === 401 && !path.startsWith('/api/session')) {
+    window.dispatchEvent(new Event('cashier-session-expired'));
+  }
   if (!response.ok)
     throw Object.assign(new Error(data.error || 'The register request failed.'), {
       status: response.status,
@@ -77,7 +81,7 @@ function Modal({ title, close, children }) {
   );
 }
 
-function App() {
+function App({ role, onSignOut }) {
   const [register, setRegister] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [cart, setCart] = useState({});
@@ -274,12 +278,23 @@ function App() {
     }
   }
 
+  async function signOut() {
+    setBusy(true);
+    try {
+      await onSignOut();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <>
       <header>
         <div className="header-group">
           <img className="brand" src="/logo.webp" alt="Dessert · Simply Sweet" />
-          <span className="header-label">Point of sale</span>
+          <span className="header-label">{role === 'owner' ? 'Owner' : 'Point of sale'}</span>
         </div>
         <div className="header-right">
           <button
@@ -305,6 +320,9 @@ function App() {
             }}
           >
             Orders
+          </button>
+          <button className="history" disabled={busy || Boolean(pending)} onClick={signOut}>
+            Sign out
           </button>
         </div>
       </header>
@@ -613,7 +631,7 @@ function App() {
                     {item.canceledQty} cancelled · {item.qty - item.canceledQty} remaining
                   </p>
                 )}
-                {cancelReason === null && item.canceledQty < item.qty && (
+                {role === 'owner' && cancelReason === null && item.canceledQty < item.qty && (
                   <button
                     className="method"
                     aria-label={`Cancel item ${item.name}`}
@@ -753,4 +771,6 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')).render(
+  <SessionGate api={api}>{(role, signOut) => <App role={role} onSignOut={signOut} />}</SessionGate>,
+);

@@ -1,7 +1,8 @@
 import express from 'express';
 import mysql from 'mysql2/promise';
-import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { installRegisterAuth } from './auth.js';
 import { cancelSaleItem, getReceipt, InputError, parseSale, recordSale } from './sales.js';
 import { runReviewWorker, whatsappConfig } from './reviews.js';
 import { productColumns, saveProduct } from './products.js';
@@ -46,31 +47,21 @@ const pool = mysql.createPool({
 const app = express();
 app.disable('x-powered-by');
 installFeedbackWebhook(app, pool, feedback);
-const digest = (value) => createHash('sha256').update(value).digest();
-const credentials = digest(Buffer.from(`${env.POS_USER}:${env.POS_PASSWORD}`).toString('base64'));
-app.use((req, res, next) => {
-  const [scheme, value] = (req.get('authorization') || '').split(' ');
-  if (scheme?.toLowerCase() !== 'basic' || !value || !timingSafeEqual(digest(value), credentials)) {
-    res
-      .set('WWW-Authenticate', 'Basic realm="desserts_pos"')
-      .status(401)
-      .send('Cashier sign-in required.');
-    return;
-  }
-  next();
-});
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
-  // Basic credentials may be attached automatically by the browser. Accept only same-origin writes.
+  // Browsers can attach credentials automatically. Accept only same-origin JSON writes.
   if (
     req.method === 'POST' &&
-    (req.get('sec-fetch-site') === 'cross-site' || !req.is('application/json'))
+    (['cross-site', 'same-site'].includes(req.get('sec-fetch-site')) || !req.is('application/json'))
   ) {
     res.status(415).json({ error: 'Use a same-origin JSON request.' });
     return;
   }
   next();
 });
+app.use('/api/session', express.json({ limit: '8kb' }));
+const { requireStaff, requireOwner } = installRegisterAuth(app, env);
+app.use('/api', requireStaff);
 app.use('/api/products', express.json({ limit: '7mb' }));
 app.use(express.json({ limit: '32kb' }));
 app.get('/api/register', async (_req, res) => {
@@ -236,7 +227,7 @@ app.get('/api/sales', async (req, res) => {
     hasMore: orders.length > 25,
   });
 });
-app.post('/api/sales/:id/items/:productId/cancel', async (req, res) => {
+app.post('/api/sales/:id/items/:productId/cancel', requireOwner, async (req, res) => {
   if (!/^[1-9]\d{0,19}$/.test(req.params.id)) throw new InputError('Invalid bill number.');
   const productId = Number(req.params.productId);
   const { requestId, qty, reason } = req.body ?? {};
@@ -268,11 +259,15 @@ app.get('/api/sales/:id', async (req, res) => {
 });
 app.use(
   '/product-images',
+  requireStaff,
   express.static(imageDirectory, {
     immutable: true,
     maxAge: '1y',
     setHeaders: (res) => res.set('X-Content-Type-Options', 'nosniff'),
   }),
+);
+app.get('/login', (_req, res) =>
+  res.sendFile(fileURLToPath(new URL('../dist/index.html', import.meta.url))),
 );
 app.use(express.static(fileURLToPath(new URL('../dist/', import.meta.url))));
 app.use((error, _req, res, _next) => {
