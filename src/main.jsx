@@ -1,3 +1,4 @@
+import { Notice } from './notice.jsx';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Scanner } from './scanner.jsx';
@@ -348,7 +349,11 @@ function App({ role, onSignOut }) {
       {!register ? (
         <section className="initial">
           <h2>Register</h2>
-          <p role="status">{loadError || 'Loading menu…'}</p>
+          {loadError ? (
+            <Notice title="Menu unavailable">{loadError}</Notice>
+          ) : (
+            <p role="status">Loading menu…</p>
+          )}
           {loadError && (
             <button className="scan" onClick={loadRegister}>
               Retry
@@ -495,11 +500,7 @@ function App({ role, onSignOut }) {
               >
                 {pending ? 'Resume billing' : 'Review payment →'}
               </button>
-              {saleError && !modal && (
-                <p className="warning" role="alert">
-                  {saleError}
-                </p>
-              )}
+              {saleError && !modal && <Notice>{saleError}</Notice>}
               {items.length > 0 && !pending && (
                 <button className="text-button" onClick={() => setModal('clear')}>
                   Clear order
@@ -612,11 +613,7 @@ function App({ role, onSignOut }) {
                 </label>
               </>
             )}
-            {saleError && (
-              <p className="warning" role="alert">
-                {saleError}
-              </p>
-            )}
+            {saleError && <Notice>{saleError}</Notice>}
             <button className="checkout" disabled={busy}>
               {busy ? 'Recording sale…' : pending ? 'Retry billing' : 'Record payment & print'}
             </button>
@@ -625,11 +622,7 @@ function App({ role, onSignOut }) {
       )}
       {modal === 'orders' && (
         <Modal title="Orders" close={close}>
-          {saleError && (
-            <p className="warning" role="alert">
-              {saleError}
-            </p>
-          )}
+          {saleError && <Notice>{saleError}</Notice>}
           <OrderList api={api} money={money} openReceipt={findReceipt} busy={busy} />
         </Modal>
       )}
@@ -676,15 +669,14 @@ function App({ role, onSignOut }) {
             </p>
           )}
           {receipt.fullyCanceled && (
-            <p className="warning" role="status">
-              <strong>Cancelled</strong>
-              {receipt.cancelReason && ` · ${receipt.cancelReason}`}
-            </p>
+            <Notice kind="warning" title="Cancelled">
+              {receipt.cancelReason || 'All billed items were cancelled.'}
+            </Notice>
           )}
           {!receipt.fullyCanceled && receipt.cancellations.length > 0 && (
-            <p className="warning" role="status">
-              Partially cancelled
-            </p>
+            <Notice kind="warning" title="Partially cancelled">
+              See the cancelled quantities and remaining total above.
+            </Notice>
           )}
           {receipt.cancellations.length > 0 && (
             <ul className="product-list" aria-label="Item cancellations">
@@ -697,11 +689,7 @@ function App({ role, onSignOut }) {
             </ul>
           )}
           {!receipt.fullyCanceled && <p role="status">{reviewLabels[receipt.review]}</p>}
-          {saleError && (
-            <p className="warning" role="alert">
-              {saleError}
-            </p>
-          )}
+          {saleError && <Notice>{saleError}</Notice>}
           {cancelReason !== null && (
             <form onSubmit={cancelSelectedItem}>
               <p>

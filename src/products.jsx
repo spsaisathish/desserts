@@ -1,3 +1,4 @@
+import { Notice } from './notice.jsx';
 import React, { useEffect, useState } from 'react';
 
 function readImage(file) {
@@ -84,11 +85,7 @@ export function ProductManager({ api, refreshRegister, money }) {
 
   return (
     <>
-      {error && (
-        <p className="warning" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <Notice>{error}</Notice>}
       {editing ? (
         <form onSubmit={save}>
           <h3>{editing.id ? 'Edit product' : 'Add product'}</h3>
@@ -190,7 +187,7 @@ export function ProductManager({ api, refreshRegister, money }) {
           >
             Add product
           </button>
-          {message && <p role="status">{message}</p>}
+          <Notice kind="success">{message}</Notice>
           <details className="samples category-manager">
             <summary>Manage categories</summary>
             {categories.length > 0 && <p>{categories.join(' · ')}</p>}

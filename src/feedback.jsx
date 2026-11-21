@@ -1,3 +1,4 @@
+import { Notice } from './notice.jsx';
 import React, { useEffect, useState } from 'react';
 
 export function FeedbackInbox({ api }) {
@@ -43,11 +44,7 @@ export function FeedbackInbox({ api }) {
         Refresh inbox
       </button>
       {loading && <p role="status">Loading feedback…</p>}
-      {error && (
-        <p className="warning" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <Notice>{error}</Notice>}
       {inbox && !inbox.enabled && !inbox.demo && <p>WhatsApp reply setup is pending.</p>}
       {inbox?.demo && (
         <form onSubmit={simulateReply}>

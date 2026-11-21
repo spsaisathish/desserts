@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Notice } from './notice.jsx';
 
 const formats = ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e'];
 
@@ -35,7 +36,7 @@ async function createDetector() {
 }
 
 export function Scanner({ scan, products, linkBarcode }) {
-  const [linkMessage, setLinkMessage] = useState('');
+  const [linkMessage, setLinkMessage] = useState(null);
   const [linking, setLinking] = useState(false);
 
   async function saveBarcode(event) {
@@ -44,21 +45,22 @@ export function Scanner({ scan, products, linkBarcode }) {
     const fields = new FormData(form);
     const productId = Number(fields.get('product'));
     setLinking(true);
-    setLinkMessage('');
+    setLinkMessage(null);
     try {
       await linkBarcode(fields.get('barcode'), productId);
       form.elements.barcode.value = '';
-      setLinkMessage(
-        `Barcode linked to ${products.find((product) => product.id === productId).name}.`,
-      );
+      setLinkMessage({
+        kind: 'success',
+        text: `Barcode linked to ${products.find((product) => product.id === productId).name}.`,
+      });
     } catch (error) {
-      setLinkMessage(error.message);
+      setLinkMessage({ kind: 'error', text: error.message });
     } finally {
       setLinking(false);
     }
   }
   const [code, setCode] = useState('');
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(null);
   const [camera, setCamera] = useState(false);
   const input = useRef(null);
   const video = useRef(null);
@@ -69,8 +71,11 @@ export function Scanner({ scan, products, linkBarcode }) {
     const product = onScan.current(value);
     setMessage(
       product
-        ? `Added ${product.name}`
-        : `Unable to add code ${value}. Check the product code or order quantity.`,
+        ? { kind: 'success', text: `Added ${product.name}` }
+        : {
+            kind: 'error',
+            text: `Unable to add code ${value}. Check the product code or order quantity.`,
+          },
     );
   }
 
@@ -96,7 +101,10 @@ export function Scanner({ scan, products, linkBarcode }) {
         timer = setTimeout(() => read(detector), 180);
       } catch {
         if (!cancelled) {
-          setMessage('Camera scanning stopped. Restart the camera or enter a code.');
+          setMessage({
+            kind: 'error',
+            text: 'Camera scanning stopped. Restart the camera or enter a code.',
+          });
           setCamera(false);
         }
       }
@@ -121,11 +129,13 @@ export function Scanner({ scan, products, linkBarcode }) {
         if (!cancelled) read(detector);
       } catch (error) {
         if (!cancelled) {
-          setMessage(
-            error.name === 'NotAllowedError'
-              ? 'Allow camera access in the browser, or enter a code.'
-              : error.message,
-          );
+          setMessage({
+            kind: 'error',
+            text:
+              error.name === 'NotAllowedError'
+                ? 'Allow camera access in the browser, or enter a code.'
+                : error.message,
+          });
           setCamera(false);
         }
       }
@@ -150,7 +160,7 @@ export function Scanner({ scan, products, linkBarcode }) {
         type="button"
         className="scan"
         onClick={() => {
-          setMessage('');
+          setMessage(null);
           setCamera(!camera);
         }}
       >
@@ -162,6 +172,7 @@ export function Scanner({ scan, products, linkBarcode }) {
         onSubmit={(event) => {
           event.preventDefault();
           if (code.trim()) scanned(code.trim());
+          else setMessage({ kind: 'error', text: 'Scan or enter a product code.' });
           setCode('');
           input.current.focus();
         }}
@@ -177,9 +188,7 @@ export function Scanner({ scan, products, linkBarcode }) {
         />
         <button className="scan">Add item</button>
       </form>
-      <p className="scan-message" role="status">
-        {message}
-      </p>
+      <Notice kind={message?.kind}>{message?.text}</Notice>
       <details className="samples">
         <summary>Link a barcode to a product</summary>
         <form onSubmit={saveBarcode}>
@@ -203,9 +212,7 @@ export function Scanner({ scan, products, linkBarcode }) {
           <button className="scan" disabled={linking}>
             {linking ? 'Saving…' : 'Save barcode'}
           </button>
-          <p className="scan-message" role="status">
-            {linkMessage}
-          </p>
+          <Notice kind={linkMessage?.kind}>{linkMessage?.text}</Notice>
         </form>
       </details>
       <details className="samples">

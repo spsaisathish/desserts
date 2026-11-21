@@ -514,11 +514,6 @@ dialog::backdrop {
   margin-top: 10px;
   background: #13291e;
 }
-.scan-message {
-  min-height: 20px;
-  margin: 9px 0;
-  color: #795623;
-}
 .samples {
   border-top: 1px solid var(--line);
   padding-top: 11px;
@@ -625,8 +620,59 @@ dialog {
   color: var(--muted);
   margin: 12px 0;
 }
-.warning {
-  color: #8b391a;
+.notice {
+  --notice-ink: #742c24;
+  --notice-border: #d8a49a;
+  --notice-bg: #fff5f1;
+  --notice-icon: #f2d8d1;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--notice-border);
+  border-inline-start-width: 3px;
+  border-radius: 9px;
+  color: var(--notice-ink);
+  background: var(--notice-bg);
+}
+.notice--success {
+  --notice-ink: #24583c;
+  --notice-border: #9bbba4;
+  --notice-bg: #f1f8f2;
+  --notice-icon: #d8eddd;
+}
+.notice--warning {
+  --notice-ink: #674515;
+  --notice-border: #d4b779;
+  --notice-bg: #fff8e9;
+  --notice-icon: #f2e3bf;
+}
+.notice-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--notice-icon);
+  font-weight: 700;
+}
+.notice-text {
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+.field-error {
+  margin: 5px 0 0;
+  color: #742c24;
+  font-size: 0.875rem;
+}
+.login-content input[aria-invalid='true'],
+.field :is(input, select):user-invalid,
+.scan-form input:user-invalid {
+  border-color: #a24b3e;
+  background: #fff8f5;
 }
 .initial {
   max-width: 700px;
@@ -643,9 +689,6 @@ dialog {
   flex: 1;
 }
 .viewfinder[hidden] {
-  display: none;
-}
-.ticket {
   display: none;
 }
 .receipt-lines {
@@ -686,12 +729,92 @@ dialog {
     white-space: normal;
   }
 }
+.ticket {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  visibility: hidden;
+  display: flow-root;
+  width: 68mm;
+  font:
+    15px/1.25 Arial,
+    sans-serif;
+  color: black;
+}
+.ticket-narrow {
+  width: 48mm;
+  font-size: 11px;
+}
+.ticket h1 {
+  font-size: 1.35em;
+  text-align: center;
+  margin: 0 0 4px;
+}
+.ticket .split {
+  gap: 5px;
+  align-items: baseline;
+  overflow-wrap: anywhere;
+}
+.ticket p {
+  margin: 4px 0;
+}
+.ticket table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ticket-heading,
+.ticket .thanks {
+  text-align: center;
+}
+.ticket table {
+  margin: 5px 0;
+  border-bottom: 1px solid black;
+}
+.ticket thead {
+  border-block: 1px solid black;
+}
+.ticket tr {
+  break-inside: avoid;
+}
+.ticket th,
+.ticket td {
+  padding: 3px 1px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  vertical-align: top;
+  white-space: nowrap;
+}
+.ticket th:first-child,
+.ticket td:first-child {
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  width: 100%;
+}
+.ticket hr {
+  border: 0;
+  border-top: 1px solid black;
+}
+.ticket-total {
+  font-size: 1.23em;
+}
+.ticket .payment-qr {
+  break-inside: avoid;
+}
+.ticket .payment-qr svg {
+  width: 35mm;
+  height: 35mm;
+}
 @media print {
   @page {
+    size: 80mm 150mm;
     margin: 3mm;
   }
   html,
-  body {
+  body,
+  #root {
+    width: auto;
+    min-width: 0;
     margin: 0;
     background: white;
     color: black;
@@ -700,66 +823,11 @@ dialog {
     display: none !important;
   }
   body #root > .ticket {
-    display: block !important;
-    width: var(--ticket-width, 68mm);
+    display: flow-root !important;
+    position: static;
+    visibility: visible;
     max-width: 100%;
     margin: 0 auto;
-    font: 11px/1.35 monospace;
-    color: black;
-  }
-  .ticket h1 {
-    font-size: 16px;
-    text-align: center;
-    margin: 0 0 4px;
-  }
-  .ticket p {
-    margin: 4px 0;
-  }
-  .ticket table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  .ticket-heading,
-  .ticket .thanks {
-    text-align: center;
-  }
-  .ticket table {
-    margin: 5px 0;
-    border-bottom: 1px solid black;
-  }
-  .ticket thead {
-    border-block: 1px solid black;
-  }
-  .ticket tr {
-    break-inside: avoid;
-  }
-  .ticket th,
-  .ticket td {
-    padding: 3px 1px;
-    text-align: right;
-    vertical-align: top;
-    white-space: nowrap;
-  }
-  .ticket th:first-child,
-  .ticket td:first-child {
-    text-align: left;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    width: 100%;
-  }
-  .ticket hr {
-    border: 0;
-    border-top: 1px solid black;
-  }
-  .ticket-total {
-    font-size: 1.18em;
-  }
-  .ticket .payment-qr {
-    break-inside: avoid;
-  }
-  .ticket .payment-qr svg {
-    width: 35mm;
-    height: 35mm;
   }
 }
 .status:not(:empty) {

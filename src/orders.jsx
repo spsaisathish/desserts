@@ -1,3 +1,4 @@
+import { Notice } from './notice.jsx';
 import React, { useEffect, useState } from 'react';
 
 const billStatuses = {
@@ -52,11 +53,7 @@ export function OrderList({ api, money, openReceipt, busy }) {
         </button>
       </form>
       {loading && <p role="status">Loading orders…</p>}
-      {error && (
-        <p className="warning" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <Notice>{error}</Notice>}
       {result?.orders.length === 0 && <p>No billed orders yet.</p>}
       <ul className="product-list">
         {result?.orders.map((order) => {

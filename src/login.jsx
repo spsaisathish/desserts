@@ -1,3 +1,4 @@
+import { Notice } from './notice.jsx';
 import React, { useEffect, useState } from 'react';
 import './login.css';
 
@@ -6,12 +7,23 @@ function LoginPage({ api, onSuccess }) {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [fields, setFields] = useState({});
 
   async function signIn(event) {
     event.preventDefault();
-    const { username, password } = Object.fromEntries(new FormData(event.currentTarget));
-    setBusy(true);
+    const form = event.currentTarget;
+    const { username, password } = Object.fromEntries(new FormData(form));
     setError('');
+    const missing = {
+      username: !username.trim() ? 'Enter your username.' : '',
+      password: !password ? 'Enter your password.' : '',
+    };
+    setFields(missing);
+    if (missing.username || missing.password) {
+      form.elements.namedItem(missing.username ? 'username' : 'password').focus();
+      return;
+    }
+    setBusy(true);
     try {
       const session = await api('/api/session', { username, password, role });
       onSuccess(session.role);
@@ -44,6 +56,7 @@ function LoginPage({ api, onSuccess }) {
                 onClick={() => {
                   setRole(account);
                   setError('');
+                  setFields({});
                   setPasswordVisible(false);
                 }}
               >
@@ -51,7 +64,7 @@ function LoginPage({ api, onSuccess }) {
               </button>
             ))}
           </div>
-          <form key={role} onSubmit={signIn}>
+          <form key={role} onSubmit={signIn} noValidate>
             <label className="login-field" htmlFor="cashier-username">
               Username
             </label>
@@ -63,7 +76,17 @@ function LoginPage({ api, onSuccess }) {
               spellCheck={false}
               required
               disabled={busy}
+              aria-invalid={Boolean(fields.username)}
+              aria-describedby={fields.username ? 'login-username-error' : undefined}
+              onChange={() => {
+                if (fields.username) setFields({ ...fields, username: '' });
+              }}
             />
+            {fields.username && (
+              <p id="login-username-error" className="field-error" role="alert">
+                {fields.username}
+              </p>
+            )}
             <label className="login-field" htmlFor="cashier-password">
               Password
             </label>
@@ -75,6 +98,11 @@ function LoginPage({ api, onSuccess }) {
                 autoComplete="current-password"
                 required
                 disabled={busy}
+                aria-invalid={Boolean(fields.password)}
+                aria-describedby={fields.password ? 'login-password-error' : undefined}
+                onChange={() => {
+                  if (fields.password) setFields({ ...fields, password: '' });
+                }}
               />
               <button
                 type="button"
@@ -84,11 +112,12 @@ function LoginPage({ api, onSuccess }) {
                 {passwordVisible ? 'Hide' : 'Show'}
               </button>
             </div>
-            {error && (
-              <p className="warning" role="alert">
-                {error}
+            {fields.password && (
+              <p id="login-password-error" className="field-error" role="alert">
+                {fields.password}
               </p>
             )}
+            {error && <Notice>{error}</Notice>}
             <button className="login-submit" disabled={busy}>
               {busy ? 'Signing in…' : 'Sign in'}
             </button>
